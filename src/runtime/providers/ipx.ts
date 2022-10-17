@@ -1,6 +1,6 @@
-import { ProviderGetImage } from 'src'
 import { joinURL, encodePath, encodeParam } from 'ufo'
-import { createOperationsGenerator } from '~image'
+import type { ProviderGetImage } from '../../types'
+import { createOperationsGenerator } from '#image'
 
 const operationsGenerator = createOperationsGenerator({
   keyMap: {
@@ -16,7 +16,7 @@ const operationsGenerator = createOperationsGenerator({
   formatter: (key, val) => encodeParam(key) + '_' + encodeParam(val)
 })
 
-export const getImage: ProviderGetImage = (src, { modifiers = {}, baseURL = '/_ipx' } = {}, { nuxtContext: { base: nuxtBase = '/' } = {} }) => {
+export const getImage: ProviderGetImage = (src, { modifiers = {}, baseURL } = {}, _ctx) => {
   if (modifiers.width && modifiers.height) {
     modifiers.resize = `${modifiers.width}x${modifiers.height}`
     delete modifiers.width
@@ -25,8 +25,13 @@ export const getImage: ProviderGetImage = (src, { modifiers = {}, baseURL = '/_i
 
   const params = operationsGenerator(modifiers) || '_'
 
+  if (!baseURL) {
+    // TODO: Support base url
+    baseURL = joinURL('/', '/_ipx')
+  }
+
   return {
-    url: joinURL(nuxtBase, baseURL, params, encodePath(src))
+    url: joinURL(baseURL, params, encodePath(src))
   }
 }
 

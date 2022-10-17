@@ -1,25 +1,34 @@
-import { normalize, resolve, dirname } from 'upath'
-import { writeJson, mkdirp } from 'fs-extra'
-import { hash } from './utils'
-import type { ModuleOptions, InputProvider, ImageModuleProvider, ProviderSetup } from './types'
+import { normalize } from 'pathe'
+import { defu } from 'defu'
+import type { Nuxt } from '@nuxt/schema'
+import type { NitroOptions } from 'nitropack'
+import { createResolver, resolvePath } from '@nuxt/kit'
+import { hash } from 'ohash'
+import type { InputProvider, ImageModuleProvider, ProviderSetup } from './types'
+import type { ModuleOptions } from './module'
 import { ipxSetup } from './ipx'
 
 const BuiltInProviders = [
+  'cloudflare',
   'cloudinary',
   'contentful',
+  'cloudimage',
   'fastly',
   'glide',
   'imagekit',
+  'gumlet',
   'imgix',
   'ipx',
   'netlify',
+  'layer0',
   'prismic',
   'sanity',
-  'static',
   'twicpics',
+  'strapi',
   'storyblok',
   'unsplash',
-  'vercel'
+  'vercel',
+  'imageengine'
 ]
 
 export const providerSetup: Record<string, ProviderSetup> = {
@@ -28,33 +37,38 @@ export const providerSetup: Record<string, ProviderSetup> = {
   static: ipxSetup,
 
   // https://vercel.com/docs/more/adding-your-framework#images
-  async vercel (_providerOptions, moduleOptions, nuxt) {
-    const imagesConfig = resolve(nuxt.options.rootDir, '.vercel_build_output/config/images.json')
-    await mkdirp(dirname(imagesConfig))
-    await writeJson(imagesConfig, {
-      domains: moduleOptions.domains,
-      sizes: Array.from(new Set(Object.values(moduleOptions.screens || {})))
+  vercel (_providerOptions, moduleOptions, nuxt: Nuxt) {
+    nuxt.options.nitro = defu(nuxt.options.nitro, {
+      vercel: <NitroOptions['vercel']>{
+        config: {
+          images: {
+            domains: moduleOptions.domains,
+            minimumCacheTTL: 60 * 5,
+            sizes: Array.from(new Set(Object.values(moduleOptions.screens || {})))
+          }
+        }
+      }
     })
   }
 }
 
-export function resolveProviders (nuxt: any, options: ModuleOptions): ImageModuleProvider[] {
+export async function resolveProviders (nuxt: any, options: ModuleOptions): Promise<ImageModuleProvider[]> {
   const providers: ImageModuleProvider[] = []
 
   for (const key in options) {
     if (BuiltInProviders.includes(key)) {
-      providers.push(resolveProvider(nuxt, key, { provider: key, options: options[key] }))
+      providers.push(await resolveProvider(nuxt, key, { provider: key, options: options[key] }))
     }
   }
 
   for (const key in options.providers) {
-    providers.push(resolveProvider(nuxt, key, options.providers[key]))
+    providers.push(await resolveProvider(nuxt, key, options.providers[key]))
   }
 
   return providers
 }
 
-export function resolveProvider (nuxt: any, key: string, input: InputProvider): ImageModuleProvider {
+export async function resolveProvider (_nuxt: any, key: string, input: InputProvider): Promise<ImageModuleProvider> {
   if (typeof input === 'string') {
     input = { name: input }
   }
@@ -67,9 +81,10 @@ export function resolveProvider (nuxt: any, key: string, input: InputProvider): 
     input.provider = input.name
   }
 
+  const resolver = createResolver(import.meta.url)
   input.provider = BuiltInProviders.includes(input.provider)
-    ? require.resolve('./runtime/providers/' + input.provider)
-    : nuxt.resolver.resolvePath(input.provider)
+    ? await resolver.resolve('./runtime/providers/' + input.provider)
+    : await resolvePath(input.provider)
 
   const setup = input.setup || providerSetup[input.name]
 
@@ -82,7 +97,7 @@ export function resolveProvider (nuxt: any, key: string, input: InputProvider): 
   }
 }
 
-export function detectProvider (userInput?: string, isStatic: boolean = false) {
+export function detectProvider (userInput?: string) {
   if (process.env.NUXT_IMAGE_PROVIDER) {
     return process.env.NUXT_IMAGE_PROVIDER
   }
@@ -95,5 +110,5 @@ export function detectProvider (userInput?: string, isStatic: boolean = false) {
     return 'vercel'
   }
 
-  return isStatic ? 'static' : 'ipx'
+  return 'ipx'
 }

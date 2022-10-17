@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - v1
+  pull_request:
+    branches:
+      - v1
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: corepack enable
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: "yarn"
+      - run: yarn install
+      - run: yarn dev:prepare
+      - run: yarn lint
+      - run: yarn build
+      - run: yarn dev:build
+      - name: Release Edge
+        if: |
+          github.event_name == 'push' &&
+          !contains(github.event.head_commit.message, '[skip-release]')
+        run: ./scripts/release-edge.sh
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NODE_AUTH_TOKEN}}

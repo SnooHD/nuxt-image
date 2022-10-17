@@ -1,14 +1,13 @@
 {
   "private": true,
   "scripts": {
-    "dev": "nuxt",
     "build": "nuxt build",
+    "dev": "nuxt dev",
     "generate": "nuxt generate",
-    "start": "nuxt start"
+    "preview": "nuxt preview"
   },
   "devDependencies": {
-    "@nuxt/image": "^0.5.0",
-    "nuxt": "^2.15.8",
-    "nuxt-vite": "^0.2.2"
+    "@nuxt/image-edge": "^1.0.0-27627435.23076b8",
+    "nuxt": "^3.0.0-rc.11"
   }
 }
