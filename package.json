@@ -19,7 +19,7 @@
     "docs:build": "cd docs && nuxt generate",
     "docs:dev": "yarn nuxt dev docs",
     "lint": "eslint --ext .ts --ext .vue .",
-    "prepack": "yarn dev:prepare && yarn build",
+    "prepack": "yarn build",
     "release": "yarn test && standard-version && git push --follow-tags && npm publish",
     "test": "yarn lint"
   },
